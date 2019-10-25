@@ -1,3 +1,9 @@
+
+provider "alks" {
+  url     = "https://alks.coxautoinc.com/rest"
+  version = "<= 1.3.0"
+}
+
 # Cloudwatch event rule
 resource "aws_cloudwatch_event_rule" "check-scheduler-event" {
     name = "${var.resource_name_prefix}check-scheduler-event"
@@ -14,28 +20,21 @@ resource "aws_cloudwatch_event_target" "check-scheduler-event-lambda-target" {
 }
 
 # IAM Role for Lambda function
-resource "aws_iam_role" "scheduler_lambda" {
-    name = "${var.resource_name_prefix}scheduler_lambda"
-    assume_role_policy = <<EOF
+resource "alks_iamrole" "scheduler_lambda" {
+  type = "AWS Lambda"
+  include_default_policies = true
+  name = "${var.resource_name_prefix}scheduler_lambda"
+}
+
+resource "aws_iam_role_policy" "scheduler_lambda_policy" {
+  name = "SchedulerLambdaPolicy"
+  role     = "${alks_iamrole.scheduler_lambda.name}"
+  policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
-
-data "aws_iam_policy_document" "ec2-access-scheduler" {
-    statement {
-        actions = [
+      "Action": [
             "ec2:DescribeInstances",
             "ec2:StopInstances",
             "ec2:StartInstances",
@@ -44,56 +43,20 @@ data "aws_iam_policy_document" "ec2-access-scheduler" {
             "rds:StartDBInstance",
             "rds:StopDBInstance",
             "rds:ListTagsForResource",
-            "rds:AddTagsToResource"
-        ]
-        resources = [
-            "*",
-        ]
-    }
-}
-
-resource "aws_iam_policy" "ec2-access-scheduler" {
-    name = "${var.resource_name_prefix}ec2-access-scheduler"
-    path = "/"
-    policy = "${data.aws_iam_policy_document.ec2-access-scheduler.json}"
-}
-
-resource "aws_iam_role_policy_attachment" "ec2-access-scheduler" {
-    role       = "${aws_iam_role.scheduler_lambda.name}"
-    policy_arn = "${aws_iam_policy.ec2-access-scheduler.arn}"
-}
-
-## create custom role
-
-resource "aws_iam_policy" "scheduler_aws_lambda_basic_execution_role" {
-  name        = "${var.resource_name_prefix}scheduler_aws_lambda_basic_execution_role"
-  path        = "/"
-  description = "AWSLambdaBasicExecutionRole"
-
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents",
-                "ec2:CreateNetworkInterface",
-                "ec2:DescribeNetworkInterfaces",
-                "ec2:DeleteNetworkInterface"
+            "rds:AddTagsToResource",
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "ec2:CreateNetworkInterface",
+            "ec2:DescribeNetworkInterfaces",
+            "ec2:DeleteNetworkInterface"
             ],
-            "Resource": "*"
-        }
-    ]
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
 }
 EOF
-}
-
-resource "aws_iam_role_policy_attachment" "basic-exec-role" {
-    role       = "${aws_iam_role.scheduler_lambda.name}"
-    policy_arn = "${aws_iam_policy.scheduler_aws_lambda_basic_execution_role.arn}"
 }
 
 # AWS Lambda need a zip file
@@ -107,7 +70,7 @@ data "archive_file" "aws-scheduler" {
 resource "aws_lambda_function" "scheduler_lambda" {
     filename = "${data.archive_file.aws-scheduler.output_path}"
     function_name = "${var.resource_name_prefix}aws-scheduler"
-    role = "${aws_iam_role.scheduler_lambda.arn}"
+    role = "${alks_iamrole.scheduler_lambda.arn}"
     handler = "aws-scheduler.handler"
     runtime = "python3.7"
     timeout = 300
