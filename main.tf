@@ -49,7 +49,10 @@ resource "aws_iam_role_policy" "scheduler_lambda_policy" {
             "logs:PutLogEvents",
             "ec2:CreateNetworkInterface",
             "ec2:DescribeNetworkInterfaces",
-            "ec2:DeleteNetworkInterface"
+            "ec2:DeleteNetworkInterface",
+            "rds:DescribeDBClusters",
+            "rds:StartDBCluster",
+            "rds:StopDBCluster"
             ],
       "Effect": "Allow",
       "Resource": "*"
