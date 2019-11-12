@@ -99,6 +99,9 @@ def check():
 
     for instance in instances:
         logger.info("Evaluating EC2 instance \"%s\"", instance.id)
+        if not instance.tags:
+            logger.info("No tags in EC2 instance \"%s\"", instance.id)
+            break
 
         try:
             data = "{}"
