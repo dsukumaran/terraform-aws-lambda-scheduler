@@ -25,7 +25,7 @@ variable "default" {
 }
 
 variable "time" {
-  default = "local"
+  default = "America/Los_Angeles"
   description = "timezone to use for scheduler. Can be 'local', 'gmt' or an Olson timezone from https://gist.github.com/ykessler/3349954. default is 'gmt'. local time is for the AWS region."
 }
 
